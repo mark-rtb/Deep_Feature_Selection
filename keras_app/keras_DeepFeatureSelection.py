@@ -30,24 +30,8 @@ def read_data(dir_name, file_name):
 
     return load_dat_df
 
-def preprocessing_df(list_drop_name, binary_attribute, key_bin_words_0,
-                     key_bin_words_1, df):
-    """ the function of data preprocessing
-    the input accepts a list of deleted columns, a column name to convert to
-    numeric type, keywords to convert, pandas DataFrame
-    in the process, prints the processing result as a table
-    the output returns pandas Dataframe preprocessed """
-
-
-    df = df.dropna(subset=[binary_attribute])
-#   remove zero values
-
-    df.drop(list_drop_name, axis=1, inplace=True)
-#   remove columns with unnecessary information
-
-    df[str(binary_attribute)].replace(key_bin_words_1, 1, inplace=True)
-    df[str(binary_attribute)].replace(key_bin_words_0, 0, inplace=True)
-#   replace string values in columns with numeric values
+def preprocessing_df(df):
+    """  """
 
     df = df.dropna()
 
@@ -60,7 +44,7 @@ def data_set_create(df, binary_attribute):
     the input takes prepared DataFrame and the name of the column with labels.
     The output is ready to feed data into the network."""
     
-    X = df.iloc[:,1:].values
+    X = df.iloc[:,:-1].values
     y = df[binary_attribute].values
 
     from sklearn.preprocessing import StandardScaler 
@@ -138,7 +122,7 @@ def calc_deepFS(model, X_train, df):
         if value % 2 == 0:
             list_weight.append(x[value])
             
-    list_name = list(df.columns.values)[1:]
+    list_name = list(df.columns.values)[:-1]
     
     list_abs_weight = []
     for value in list_weight:
@@ -149,28 +133,35 @@ def calc_deepFS(model, X_train, df):
 
     return DeepSelect
 
-def main():
-    
-    list_drop_name = ['ORDERID', 'APPROVED', 'ISSUED', 'SHTRAFDAYSQUANT', 'ORDERSTATUS']
-#   list of columns not involved in this stage of analysis
+def save_inf_val(inf_val, binary_attribute, dir_name):
+    """ the function saves the sorted DataFrame into a directory
+    with data with the name of the attribute on which the calculation was
+    performed, in the format .pkl """
 
-    binary_attribute = 'BAD'
+
+    path_to_file = os.path.join(dir_name, binary_attribute)
+#   full path to the data file
+
+    inf_val.to_pickle(path_to_file)
+#   saving file
+
+def main():
+
+
+    binary_attribute = 'y'
 #   target attribute by which the analysis is performed
 
-    key_bin_words_0, key_bin_words_1 = 'не вернул', 'вернул'
-#   words that need to be replaced with a binary sign
     
-    file_name = 'loanform_features.csv'
+    file_name = 'train.csv'
     
-    dir_name = 'D:\\DeepFeatureSelection\\keras_app\\'
+    dir_name = 'D:\\DeepFeatureSelection\\'
     
-    batch_size = 40 
-    num_epochs = 50 
+    batch_size = 75
+    num_epochs = 100 
     
     df_load = read_data(dir_name, file_name)
     
-    df = preprocessing_df(list_drop_name, binary_attribute, key_bin_words_0,
-                      key_bin_words_1, df_load)
+    df = preprocessing_df(df_load)
     
     X_train, X_test, y_train, y_test = data_set_create(df, binary_attribute)
     
@@ -182,9 +173,11 @@ def main():
     
     df_DFS = calc_deepFS(model, X_train, df)
 
+    inf_val = df_DFS.sort_values(by='value', ascending=False)
 
-    print(df_DFS.sort_values(by='value', ascending=False))
+    print(inf_val)
     
+    save_inf_val(inf_val, binary_attribute, dir_name)
     
 if __name__ == '__main__':
     main()
